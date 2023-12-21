@@ -6,15 +6,21 @@ authors = [{ name = "Kristofers Solo", email = "dev@kristofers.xyz" }]
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-dependencies = ["attrs==23.1.0", "loguru==0.7.2"]
+dependencies = [
+  "openpyxl==3.1.2",
+  "attrs==23.1.0",
+  "loguru==0.7.2",
+  "matplotlib==3.8.2",
+  "pandas==2.1.4",
+]
 
 [tool.mypy]
 check_untyped_defs = true
 disallow_any_generics = true
 ignore_missing_imports = true
-no_implicit_optional = true
-no_implicit_reexport = true
-show_error_codes = true
+# no_implicit_optional = true
+# no_implicit_reexport = true
+# show_error_codes = true
 strict_equality = true
 warn_redundant_casts = true
 warn_return_any = true

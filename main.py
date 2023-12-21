@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from data.visualize import visualize
+
 from loguru import logger
 
 logger.add(
@@ -15,7 +17,7 @@ logger.add(
 
 @logger.catch
 def main() -> None:
-    pass
+    visualize()
 
 
 if __name__ == "__main__":
