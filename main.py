@@ -3,6 +3,8 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+
+import numpy as np
 import pandas as pd
 from loguru import logger
 
@@ -26,35 +28,37 @@ def read_data(path: Path) -> pd.DataFrame:
     return dataframe
 
 
-# def visualize() -> None:
-#     df_wind_speed = read_data(WIND_SPEED_PATH)
-#     df_wind_gusts = read_data(WIND_GUSTS_PATH)
-#     index = range(len(df_wind_speed))
-#     bar_width = 0.35
-#
-#     for column, (mean_speed, max_speed) in enumerate(zip(df_wind_speed.columns, df_wind_gusts.columns)):
-#         plt.bar(index, df_wind_speed[column], width=bar_width, label=f"Vidējais vēja ātrums {mean_speed}", color="blue")
-#         plt.bar(index, df_wind_gusts[column], width=bar_width, label=f"Vēja ātrums brāzmās {mean_speed}", color="orange")
-#
-#     plt.figure(figsize=(12, 6))
-#     plt.xlabel("Mērījumu Datums")
-#     plt.ylabel("Vēja ātrums (m/s)")
-#     plt.title("Vidējais un maksimālais vēja ātrums 2023. gada augustā")
-#     plt.legend()
-#     plt.show()
+def bar_chart() -> None:
+    df_wind_speed = read_data(WIND_SPEED_PATH).mean(axis=1)
+    df_wind_gusts = read_data(WIND_GUSTS_PATH).max(axis=1) - df_wind_speed
 
+    df_combined = pd.concat(
+        [df_wind_speed, df_wind_gusts],
+        axis=1,
+    )
 
-def task2() -> None:
-    # create a bar chart
-    df_air_temp = read_data(AIR_TEMP_PATH)
-    plt.bar(df_air_temp, height=10, width=0.8)
+    df_combined.columns = ["Vidējais", "Maksimālais"]
+    df_combined.plot.bar(stacked=True, figsize=(12, 8), color=["#ff7f0e", "#1f77b4"], width=0.6)
+
+    plt.yticks(np.arange(0, df_combined.max().max() + 2.5, 2.5))
+    plt.xticks(rotation=45)
+
+    plt.xlabel("Mērījumu Datums")
+    plt.ylabel("Vēja ātrums (m/s)")
+    plt.title("Vidējais un maksimālais vēja ātrums 2023. gada augustā")
     plt.show()
+
+
+# def task2() -> None:
+#     # create a bar chart
+#     df_air_temp = read_data(AIR_TEMP_PATH)
+#     plt.bar(df_air_temp, height=10, width=0.8)
+#     plt.show()
 
 
 @logger.catch
 def main() -> None:
-    # visualize()
-    task2()
+    bar_chart()
 
 
 if __name__ == "__main__":
