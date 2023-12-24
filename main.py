@@ -23,17 +23,29 @@ AIR_TEMP_PATH = BASE_PATH.joinpath("data", "gaisaTemperatura2022.xlsx")
 
 
 def read_data(path: Path) -> pd.DataFrame:
-    dataframe = pd.read_excel(path, parse_dates=["Datums"])
-    dataframe.set_index("Datums", inplace=True)
+    dataframe = pd.read_excel(path, date_parser="Datums", index_col="Datums")
     return dataframe
 
 
+def get_season(month: int) -> str | None:
+    if month in [12, 1, 2]:
+        return "Ziema"
+    elif month in [3, 4, 5]:
+        return "Pavasaris"
+    elif month in [6, 7, 8]:
+        return "Vasara"
+    elif month in [9, 10, 11]:
+        return "Rudens"
+    else:
+        return None
+
+
 def bar_chart() -> None:
-    df_wind_speed = read_data(WIND_SPEED_PATH).mean(axis=1)
-    df_wind_gusts = read_data(WIND_GUSTS_PATH).max(axis=1) - df_wind_speed
+    df_avg = read_data(WIND_SPEED_PATH).mean(axis=1)
+    df_max = read_data(WIND_GUSTS_PATH).max(axis=1) - df_avg
 
     df_combined = pd.concat(
-        [df_wind_speed, df_wind_gusts],
+        [df_avg, df_max],
         axis=1,
     )
 
@@ -43,22 +55,36 @@ def bar_chart() -> None:
     plt.yticks(np.arange(0, df_combined.max().max() + 2.5, 2.5))
     plt.xticks(rotation=45)
 
+    plt.title("Vidējais un maksimālais vēja ātrums 2023. gada augustā")
     plt.xlabel("Mērījumu Datums")
     plt.ylabel("Vēja ātrums (m/s)")
-    plt.title("Vidējais un maksimālais vēja ātrums 2023. gada augustā")
     plt.show()
 
 
-# def task2() -> None:
-#     # create a bar chart
-#     df_air_temp = read_data(AIR_TEMP_PATH)
-#     plt.bar(df_air_temp, height=10, width=0.8)
-#     plt.show()
+SEASONS = {
+    1: "Ziema",
+    2: "Pavasaris",
+    3: "Vasara",
+    4: "Rudens",
+}
+
+
+def box_plot() -> None:
+    df = read_data(AIR_TEMP_PATH)
+    df.index = pd.to_datetime(df.index, format="%d.%m.%Y")
+
+    df["Season"] = df.index.month % 12 // 3 + 1
+    df["Season"] = df["Season"].map(SEASONS)
+
+    plt.title("Gaisa temperatūra Rīgā četros gadalaikos")
+    plt.ylabel("Gaisa temperatūra (Celsija grādos)")
+    # plt.show()
 
 
 @logger.catch
 def main() -> None:
-    bar_chart()
+    # bar_chart()
+    box_plot()
 
 
 if __name__ == "__main__":
