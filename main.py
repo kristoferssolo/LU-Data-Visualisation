@@ -14,7 +14,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 logger.add(
     Path("logs", "data.log"),
     format="{time} | {level} | {message}",
-    level="DEBUG",
+    level="INFO",
     rotation="1 MB",
     compression="zip",
 )
@@ -30,12 +30,15 @@ ORANGE = "#ff7f0e"
 BLACK = "#000000"
 
 
+@logger.catch
 def read_data(path: Path) -> pd.DataFrame:
     dataframe = pd.read_excel(path, parse_dates=["Datums"], index_col="Datums", date_format="%d.%m.%Y")
+    logger.info(f"Read data from {path}")
     return dataframe
 
 
-def bar_chart() -> plt.Figure:
+@logger.catch
+def create_bar_chart() -> plt.Figure:
     df_avg: pd.Series = read_data(WIND_SPEED_PATH).mean(axis=1)
     df_max: pd.Series = read_data(WIND_GUSTS_PATH).max(axis=1) - df_avg
 
@@ -63,6 +66,9 @@ def bar_chart() -> plt.Figure:
     ax.set_title("Vidējais un maksimālais vēja ātrums 2023. gada augustā")
     ax.set_xlabel("Mērījumu Datums")
     ax.set_ylabel("Vēja ātrums (m/s)")
+
+    logger.info("Created bar chart")
+
     return fig
 
 
@@ -74,7 +80,8 @@ SEASONS: dict[int, str] = {
 }
 
 
-def box_plot() -> plt.Figure:
+@logger.catch
+def create_box_plot() -> plt.Figure:
     df: pd.DataFrame = read_data(AIR_TEMP_PATH)
 
     df["Season"] = df.index.month % 12 // 3 + 1
@@ -105,32 +112,43 @@ def box_plot() -> plt.Figure:
     ax.set_title("Gaisa temperatūra Rīgā četros gadalaikos")
     ax.set_ylabel("Gaisa temperatūra (Celsija grādos)")
     ax.set_xlabel("")
+
+    logger.info("Created box plot")
+
     return fig
+
+
+@logger.catch
+def open_pdf(pdf_path: Path) -> None:
+    logger.info(f"Opening {pdf_path}")
+
+    system = platform.system().lower()
+    if system == "linux":
+        subprocess.run(["xdg-open", pdf_path], check=True)
+    elif system == "windows":
+        subprocess.run(["start", "", pdf_path], check=True)
+    elif system == "darwin":  # macOS
+        subprocess.run(["open", pdf_path], check=True)
+    else:
+        logger.warning(f"Unsupported platform: {system}. Please open the PDF manually.")
 
 
 @logger.catch
 def main() -> None:
     with PdfPages(PDF_PATH) as pdf:
-        fig1 = bar_chart()
+        fig1 = create_bar_chart()
         pdf.savefig(fig1)
         plt.close(fig1)
 
-        fig2 = box_plot()
+        fig2 = create_box_plot()
         pdf.savefig(fig2)
         plt.close(fig2)
 
     try:
-        system = platform.system().lower()
-        if system == "linux":
-            subprocess.run(["xdg-open", PDF_PATH], check=True)
-        elif system == "windows":
-            subprocess.run(["start", "", PDF_PATH], check=True)
-        elif system == "darwin":  # macOS
-            subprocess.run(["open", PDF_PATH], check=True)
-        else:
-            logger.warning(f"Unsupported platform: {system}. Please open the PDF manually.")
+        open_pdf(PDF_PATH)
     except Exception as e:
         logger.error(e)
+        logger.warning("Something went wrong while opening the PDF. Please open it manually.")
 
 
 if __name__ == "__main__":
