@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+"""
+Author: Kristiāns Francis Cagulis, kc22015
+Date: 25.12.2023.
+Github: https://github.com/kristoferssolo/LU-Data-Visualisation
+Dependencies: matplotlib, numpy, pandas, loguru, openpyxl
+
+This script generates two plots from Excel files and saves them to a PDF file.
+Excel files can be stored in the same directory as this script or in a subdirectory called "data".
+"""
+
+
 import platform
 import subprocess
 from pathlib import Path
@@ -11,14 +22,6 @@ from loguru import logger
 from matplotlib.backends.backend_pdf import PdfPages
 
 
-logger.add(
-    Path("logs", "data.log"),
-    format="{time} | {level} | {message}",
-    level="INFO",
-    rotation="1 MB",
-    compression="zip",
-)
-
 BASE_PATH = Path(__file__).parent
 WIND_GUSTS_FILENAME = "vejaAtrumsBrazmas.xlsx"
 WIND_SPEED_FILENAME = "vejaAtrumsFaktiskais.xlsx"
@@ -28,6 +31,15 @@ PDF_FILENAME = "plots.pdf"
 BLUE = "#1f77b4"
 ORANGE = "#ff7f0e"
 BLACK = "#000000"
+
+# Setup logger
+logger.add(
+    BASE_PATH.joinpath("logs", "data.log"),
+    format="{time} | {level} | {message}",
+    level="INFO",
+    rotation="1 MB",
+    compression="zip",
+)
 
 
 def read_data(filename: str) -> pd.DataFrame:
