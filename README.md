@@ -4,6 +4,7 @@
 
 - [Task](#task)
 - [Installation / Running](#installation--running)
+- [Result](#result)
 
 <!-- tocstop -->
 
@@ -15,3 +16,6 @@ Read [here](./TASK.md).
 pip install -r requirements.txt
 python3 main.py
 ```
+
+## Result
+PDF available [here](./plots.pdf)
