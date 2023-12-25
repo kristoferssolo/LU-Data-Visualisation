@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
+import platform
+import subprocess
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from loguru import logger
+from matplotlib.backends.backend_pdf import PdfPages
+
 
 logger.add(
     Path("logs", "data.log"),
@@ -19,6 +23,7 @@ BASE_PATH = Path(__file__).parent
 WIND_GUSTS_PATH = BASE_PATH.joinpath("data", "vejaAtrumsBrazmas.xlsx")
 WIND_SPEED_PATH = BASE_PATH.joinpath("data", "vejaAtrumsFaktiskais.xlsx")
 AIR_TEMP_PATH = BASE_PATH.joinpath("data", "gaisaTemperatura2022.xlsx")
+PDF_PATH = BASE_PATH.joinpath("plots.pdf")
 
 BLUE = "#1f77b4"
 ORANGE = "#ff7f0e"
@@ -30,28 +35,38 @@ def read_data(path: Path) -> pd.DataFrame:
     return dataframe
 
 
-def bar_chart() -> None:
-    df_avg = read_data(WIND_SPEED_PATH).mean(axis=1)
-    df_max = read_data(WIND_GUSTS_PATH).max(axis=1) - df_avg
+def bar_chart() -> plt.Figure:
+    df_avg: pd.Series = read_data(WIND_SPEED_PATH).mean(axis=1)
+    df_max: pd.Series = read_data(WIND_GUSTS_PATH).max(axis=1) - df_avg
 
-    df_combined = pd.concat(
+    df_combined: pd.DataFrame = pd.concat(
         [df_avg, df_max],
         axis=1,
     )
 
+    fig, ax = plt.subplots(figsize=(12, 8))
+
     df_combined.columns = ["Vidējais", "Maksimālais"]
-    df_combined.plot.bar(stacked=True, figsize=(12, 8), color=[ORANGE, BLUE], width=0.6)
+    df_combined.plot.bar(
+        stacked=True,
+        figsize=(12, 8),
+        color=[ORANGE, BLUE],
+        width=0.6,
+        ax=ax,
+    )
 
-    plt.yticks(np.arange(0, df_combined.max().max() + 2.5, 2.5))
-    plt.xticks(rotation=45)  # FIX: don't display time
+    date_format = df_combined.index.strftime("%d.%m.%Y")
+    ax.set_xticks(np.arange(len(date_format)))
+    ax.set_xticklabels(date_format, rotation=45)
+    ax.set_yticks(np.arange(0, df_combined.max().max() + 2.5, 2.5))
 
-    plt.title("Vidējais un maksimālais vēja ātrums 2023. gada augustā")
-    plt.xlabel("Mērījumu Datums")
-    plt.ylabel("Vēja ātrums (m/s)")
-    plt.show()
+    ax.set_title("Vidējais un maksimālais vēja ātrums 2023. gada augustā")
+    ax.set_xlabel("Mērījumu Datums")
+    ax.set_ylabel("Vēja ātrums (m/s)")
+    return fig
 
 
-SEASONS = {
+SEASONS: dict[int, str] = {
     1: "Ziema",
     2: "Pavasaris",
     3: "Vasara",
@@ -59,64 +74,63 @@ SEASONS = {
 }
 
 
-def box_plot() -> None:
-    df = read_data(AIR_TEMP_PATH)
+def box_plot() -> plt.Figure:
+    df: pd.DataFrame = read_data(AIR_TEMP_PATH)
 
     df["Season"] = df.index.month % 12 // 3 + 1
     df["Season"] = df["Season"].map(SEASONS)
 
     df["Average"] = df.iloc[:, 0:24].mean(axis=1)
 
-    df_melted = pd.melt(df, id_vars=["Season"], value_name="Temperature", var_name="Time")  # FIX: should be average temperature
-    df_melted["Season"] = pd.Categorical(df_melted["Season"], categories=SEASONS.values(), ordered=True)
+    seasonal_data: list[pd.Series] = [df[df["Season"] == season]["Average"] for season in SEASONS.values()]
 
-    _, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(12, 8))
 
-    box_props = dict(facecolor=BLUE)  # box
-    median_props = dict(color=ORANGE)  # median line
-    whisker_props = dict(color=BLACK)  # whiskers (vertical line beween box and min/max)
-    width = 0.4
-
-    df_melted[df_melted["Season"] == "Rudens"].boxplot(
-        by="Season",
-        ax=ax,
-        grid=False,
-        showfliers=0.5,
-        boxprops=box_props,
-        medianprops=median_props,
-        whiskerprops=whisker_props,
+    ax.boxplot(
+        seasonal_data,
+        labels=SEASONS.values(),
+        showfliers=True,
+        boxprops=dict(facecolor=BLUE),  # box
+        medianprops=dict(color=ORANGE),  # median line
+        whiskerprops=dict(color=BLACK),  # whiskers (vertical line between box and min/max)
         patch_artist=True,
-        widths=width,
+        widths=0.4,
     )
 
-    df_melted[df_melted["Season"] != "Rudens"].boxplot(
-        by="Season",
-        ax=ax,
-        grid=False,
-        showfliers=False,
-        boxprops=box_props,
-        medianprops=median_props,
-        whiskerprops=whisker_props,
-        patch_artist=True,
-        widths=width,
-    )
+    min_value: float = np.floor(df["Average"].min() / 5) * 5
+    max_value: float = np.ceil(df["Average"].max() / 5) * 5
+    tick_step: int = 5
 
-    min_value = np.floor(df_melted["Temperature"].min() / 5) * 5
-    max_value = np.ceil(df_melted["Temperature"].max() / 5) * 5
-    tick_step = 5
-
-    plt.yticks(np.arange(min_value, max_value, tick_step))
-    plt.title("Gaisa temperatūra Rīgā četros gadalaikos")
-    plt.suptitle("")
-    plt.ylabel("Gaisa temperatūra (Celsija grādos)")
-    plt.xlabel("")
-    plt.show()
+    ax.set_yticks(np.arange(min_value, max_value, tick_step))
+    ax.set_title("Gaisa temperatūra Rīgā četros gadalaikos")
+    ax.set_ylabel("Gaisa temperatūra (Celsija grādos)")
+    ax.set_xlabel("")
+    return fig
 
 
 @logger.catch
 def main() -> None:
-    # bar_chart()
-    box_plot()
+    with PdfPages(PDF_PATH) as pdf:
+        fig1 = bar_chart()
+        pdf.savefig(fig1)
+        plt.close(fig1)
+
+        fig2 = box_plot()
+        pdf.savefig(fig2)
+        plt.close(fig2)
+
+    try:
+        system = platform.system().lower()
+        if system == "linux":
+            subprocess.run(["xdg-open", PDF_PATH], check=True)
+        elif system == "windows":
+            subprocess.run(["start", "", PDF_PATH], check=True)
+        elif system == "darwin":  # macOS
+            subprocess.run(["open", PDF_PATH], check=True)
+        else:
+            logger.warning(f"Unsupported platform: {system}. Please open the PDF manually.")
+    except Exception as e:
+        logger.error(e)
 
 
 if __name__ == "__main__":
